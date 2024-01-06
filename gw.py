@@ -12,12 +12,8 @@ os.system('./bbscope bc -t VzNtVzl2c0Z2YVBsSjhWakZvS3FES2MvVmVHN1hXRnVadjZUR0RpY
 
 def get_domain(txt):
     d = open(txt, 'r', encoding='utf-8').read().split('\n')
-    domain = []
-    for i in d:
-        if i[0] == "*":
-            domain.append(i)
-
-    with open('domain'+txt,'w') as f:
+    domain = [i for i in d if i[0] == "*"]
+    with open(f'domain{txt}', 'w') as f:
         for d in domain:
             f.writelines(d+'\n')
 

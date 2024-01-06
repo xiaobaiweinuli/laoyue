@@ -57,8 +57,7 @@ def Write_To_Excel(all_info_list, mgwj_list, ld_list, httpx_info, fs_list, host_
     ws2['A1'] = '漏洞地址'
     ws2.column_dimensions['A'].width = 70
     for l in fs_list:
-        list1 = []
-        list1.append(l)
+        list1 = [l]
         ws2.append(list1)
 
     ws3['A1'] = '地址'
@@ -88,8 +87,7 @@ def Write_To_Excel(all_info_list, mgwj_list, ld_list, httpx_info, fs_list, host_
     ws5.column_dimensions['A'].width = 150
 
     for l in host_scan_list:
-        a = []
-        a.append(l)
+        a = [l]
         ws5.append(a)
 
     ws6['A1'] = '网址'
@@ -103,12 +101,11 @@ def Write_To_Excel(all_info_list, mgwj_list, ld_list, httpx_info, fs_list, host_
     for l in httpx_info:
         ws6.append(l)
 
-    wb.save("./result/baolumian/暴露面收集" + t + ".xlsx")
+    wb.save(f"./result/baolumian/暴露面收集{t}.xlsx")
 
 
 def yt_info(url):
-    temp_url_list = []
-    temp_url_list.append(url)
+    temp_url_list = [url]
     while temp_url_list:
         temp_url_list.pop()
         r = requests.get(url, timeout=3)
@@ -119,53 +116,49 @@ def yt_info(url):
             continue
         loadurl = res['data']['arr']
 
-        if loadurl != None:
-            company = loadurl[0]['company']
-            print(company)
-            for i in range(0, len(loadurl)):
-                domain = loadurl[i]['domain']
-                if '.' in domain:
-                    val = tldextract.extract(domain)
-                    if val.registered_domain not in all_domain_list:
-                        continue
-                info = []
-                arr_url = loadurl[i]['url']
-                # if '中国' in loadurl[i]['isp']:
-                #     arr_ip = loadurl[i]['ip']
-                # else:
-                #     arr_ip = '存在CDN:' + loadurl[i]['ip']
-                arr_ip = isCDN(loadurl[i]['domain'], loadurl[i]['ip'])
-                arr_port = loadurl[i]['port']
-                arr_web_title = loadurl[i]['web_title']
-                arr_protocol = loadurl[i]['protocol'] + ',' + loadurl[i]['base_protocol']
-                arr_status_code = loadurl[i]['status_code']
-                arr_component = loadurl[i]['component']
-                arr_beianhhao = loadurl[i]['number']
-                if arr_beianhhao == '':
-                    arr_beianhhao = '-'
-                arr_all_component = ''
-                if arr_component != None:
-                    for i in arr_component:
-                        s = i['name'] + i['version']
-                        arr_all_component = arr_all_component + '|' + s
-                info.append(arr_url)
-                info.append(arr_ip)
-                info.append(arr_port)
-                info.append(arr_web_title)
-                info.append(arr_protocol)
-                info.append(arr_status_code)
-                info.append(arr_all_component)
-                info.append(arr_beianhhao)
-                # print(info)
-                flag = True
-                for b in black_domian:
-                    if b in arr_url:
-                        flag = False
-                if flag:
-                    all_info_list.append(info)
-            return 1
-        else:
+        if loadurl is None:
             return 2
+        company = loadurl[0]['company']
+        print(company)
+        for i in range(0, len(loadurl)):
+            domain = loadurl[i]['domain']
+            if '.' in domain:
+                val = tldextract.extract(domain)
+                if val.registered_domain not in all_domain_list:
+                    continue
+            arr_url = loadurl[i]['url']
+            # if '中国' in loadurl[i]['isp']:
+            #     arr_ip = loadurl[i]['ip']
+            # else:
+            #     arr_ip = '存在CDN:' + loadurl[i]['ip']
+            arr_ip = isCDN(loadurl[i]['domain'], loadurl[i]['ip'])
+            arr_port = loadurl[i]['port']
+            arr_web_title = loadurl[i]['web_title']
+            arr_protocol = loadurl[i]['protocol'] + ',' + loadurl[i]['base_protocol']
+            arr_status_code = loadurl[i]['status_code']
+            arr_component = loadurl[i]['component']
+            arr_beianhhao = loadurl[i]['number']
+            if arr_beianhhao == '':
+                arr_beianhhao = '-'
+            arr_all_component = ''
+            if arr_component != None:
+                for i in arr_component:
+                    s = i['name'] + i['version']
+                    arr_all_component = f'{arr_all_component}|{s}'
+            info = [
+                arr_url,
+                arr_ip,
+                arr_port,
+                arr_web_title,
+                arr_protocol,
+                arr_status_code,
+                arr_all_component,
+                arr_beianhhao,
+            ]
+            flag = all(b not in arr_url for b in black_domian)
+            if flag:
+                all_info_list.append(info)
+        return 1
 
 
 def yt_get_info(name_list):
@@ -176,35 +169,33 @@ def yt_get_info(name_list):
             for domain in domain_list:
                 if domain != '':
                     if isIP(domain):
-                        domain_all = domain_all + "ip=" + domain + '||'
+                        domain_all = f"{domain_all}ip={domain}||"
                     else:
-                        domain_all = domain_all + "domain=" + domain + '||'
+                        domain_all = f"{domain_all}domain={domain}||"
             print(domain_all)
-            search_key = '(' + domain_all[0:-2] + ')' + str(fofa_keyword)
+            search_key = f'({domain_all[:-2]}){str(fofa_keyword)}'
             keyword = base64.urlsafe_b64encode(search_key.encode("utf-8"))  # 把输入的关键字转换为base64编码
             page = 1
             api_num = 0
             while True:
                 # 测试第一个API积分是否够用
-                url = "https://hunter.qianxin.com/openApi/search?api-key={}&search={}&page={}&page_size=1&is_web=1".format(
-                    hunter_config_list[api_num], keyword.decode(), page)
+                url = f"https://hunter.qianxin.com/openApi/search?api-key={hunter_config_list[api_num]}&search={keyword.decode()}&page={page}&page_size=1&is_web=1"
                 r = requests.get(url)
                 res = json.loads(r.text)
 
                 if str(res['code']) == '429':
                     continue
                 if str(res['code']) == '401':
-                    if int(api_num) < int(len(hunter_config_list)):
+                    if int(api_num) < len(hunter_config_list):
                         api_num += 1
                     continue
-                if str(res['code']) == '40204' or str(res['code']) == '40201':
-                    if int(api_num) < int(len(hunter_config_list)):
+                if str(res['code']) in {'40204', '40201'}:
+                    if int(api_num) < len(hunter_config_list):
                         api_num += 1
-                        print('上一个积分已经用完,切换第' + str(int(api_num) + 1) + '个API')
+                        print(f'上一个积分已经用完,切换第{str(api_num + 1)}个API')
                         continue
 
-                url = "https://hunter.qianxin.com/openApi/search?api-key={}&search={}&page={}&page_size={}&is_web=1".format(
-                    hunter_config_list[api_num], keyword.decode(), page, yt_size)
+                url = f"https://hunter.qianxin.com/openApi/search?api-key={hunter_config_list[api_num]}&search={keyword.decode()}&page={page}&page_size={yt_size}&is_web=1"
                 print(url)
                 pd_num = yt_info(url)
                 if pd_num == 2:
@@ -227,18 +218,17 @@ def get_title(url):
 
 
 def isCDN(domain, ip):  # 判断目标是否存在CDN
-    parm = 'nslookup ' + domain
+    parm = f'nslookup {domain}'
     try:
         result = os.popen(parm).read()
         l = result.split('Name:')
         if result.count("Name") > 1 or domain not in l[1] or 'gslb' in result or 'dns' in result or 'cache' in result:
-            return "存在CDN" + str(ip)
-        else:
-            if ip not in ip_list:
-                ip_list.append(ip)
+            return f"存在CDN{str(ip)}"
+        if ip not in ip_list:
+            ip_list.append(ip)
             # 添加到对应域名IP文件列表里,方便进行host碰撞
-            all_domain_ip_list.append(domain + '-' + ip)
-            return ip
+        all_domain_ip_list.append(f'{domain}-{ip}')
+        return ip
     except:
         return '-'
 
@@ -246,11 +236,7 @@ def isCDN(domain, ip):  # 判断目标是否存在CDN
 def fy_list(list1, count):
     new_list = []
     num = len(list1)
-    if int(num) > int(count):
-        n = num // int(count)
-    else:
-        n = 1
-
+    n = num // int(count) if num > int(count) else 1
     for i in range(0, n):
         one_list = list1[math.floor(i / n * num):math.floor((i + 1) / n * num)]
         new_list.append(one_list)
@@ -266,11 +252,11 @@ def get_fofa_url(domain_l):
                 for domain in domain_list:
                     if domain != '':
                         if isIP(domain):
-                            domain_all = domain_all + "ip=" + domain + '||'
+                            domain_all = f"{domain_all}ip={domain}||"
                         else:
-                            domain_all = domain_all + "domain=" + domain + '||'
+                            domain_all = f"{domain_all}domain={domain}||"
                 print(domain_all)
-                search_key = '(' + domain_all[0:-2] + ')' + str(fofa_keyword)
+                search_key = f'({domain_all[:-2]}){str(fofa_keyword)}'
                 search_data_b64 = base64.b64encode(search_key.encode("utf-8")).decode("utf-8")
                 search = 'https://fofa.info/api/v1/search/all?email=' + fofa_email + '&size=' + fofa_size + '&key=' + fofa_key + '&qbase64=' + search_data_b64 + "&fields=host,ip,port,title,protocol,header,server,product,icp,domain"
                 print(search)
@@ -278,7 +264,7 @@ def get_fofa_url(domain_l):
                     r = requests.get(search, verify=False)
                     res = json.loads(r.text)
                     size = len(res['results'])
-                    for i in range(0, int(size)):
+                    for i in range(0, size):
                         info = []
                         result = res['results'][i]
                         num = len(result)
@@ -287,41 +273,38 @@ def get_fofa_url(domain_l):
                             result[4] = 'http'
                         if result[9] not in domain_l:
                             continue
-                        for j in range(0, int(num) - 1):
-                            if j == 1:
-                                ip = isCDN(result[9], result[1])
-                                result[1] = ip
+                        for j in range(0, num - 1):
                             if j == 0:
                                 print(result[0])
-                                if 'http' not in result[0][0:5]:
-                                    if 'http' not in result[4]:
-                                        result[0] = 'https://' + result[0]
-                                    else:
-                                        result[0] = result[4] + '://' + result[0]
-                            if j == 6:
-                                temp = result[j]
-                                continue
-                            if j == 7:
-                                result[j] = '|' + result[j] + '|' + temp
-                            if j == 8:
-                                if result[j] == '':
-                                    result[j] = '-'
-                            if j == 5:
-                                if result[j] == '':
-                                    result[j] == '-'
-                            if j == 3:
+                                if 'http' not in result[0][:5]:
+                                    result[0] = (
+                                        'https://' + result[0]
+                                        if 'http' not in result[4]
+                                        else result[4] + '://' + result[0]
+                                    )
+                            elif j == 1:
+                                ip = isCDN(result[9], result[1])
+                                result[1] = ip
+                            elif j == 3:
                                 result[j] = get_title(result[0])
                                 if result[j] == '':
                                     result[j] = '-'
 
-                            if j == 5:
+                            elif j == 5:
+                                if result[j] == '':
+                                    result[j] == '-'
                                 result[j] = result[j][9:12]
+                            elif j == 6:
+                                temp = result[j]
+                                continue
+                            elif j == 7:
+                                result[j] = '|' + result[j] + '|' + temp
+                            elif j == 8:
+                                if result[j] == '':
+                                    result[j] = '-'
                             info.append(result[j])
                         print(info)
-                        flag = True
-                        for b in black_domian:
-                            if b in result[0]:
-                                flag = False
+                        flag = all(b not in result[0] for b in black_domian)
                         if flag:
                             all_info_list.append(info)
                 except:
@@ -344,18 +327,17 @@ def get_all_url_fo_yt():
     if '.txt' in company_domain:
         with open(company_domain, 'r', encoding='utf-8') as f:
             l = f.readlines()
-            for i in l:
-                company_domains_list.append(i.strip('\n'))
+            company_domains_list.extend(i.strip('\n') for i in l)
     else:
         company_domains_list.append(company_domain)
 
-    if len(company_domains_list) != 0:
+    if company_domains_list:
         for com in company_domains_list:
             all_domain_list.append(com)
 
     print('当前搜集了如下域名')
-    all_qc_domain_list = list(set(all_domain_list))
     if notauto != True:
+        all_qc_domain_list = list(set(all_domain_list))
         # 调用鹰图,并添加到所有搜集的列表
         if is_hunter == '0':
             print('开始调用鹰图')
@@ -373,10 +355,7 @@ def get_all_url_fo_yt():
 # 判断是ip还是域名
 def isIP(str):
     p = re.compile('^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$')
-    if p.match(str):
-        return True
-    else:
-        return False
+    return bool(p.match(str))
 
 
 def save_cache(target_list,subfinder_list):
@@ -392,32 +371,34 @@ def save_cache(target_list,subfinder_list):
         for tar in target_list:
             print(tar[0])
             if tar[0] not in sm_cache_file_list:
-                if str(tar[5]) == '200' or str(tar[5]) == '301' or str(tar[5]) == '302' or str(tar[5]) == '201' or str(
-                        tar[5]) == '404' or str(tar[5]) == '401' or str(tar[5]) == '405':
-                    info = []
-                    info.append(str(tar[0]))
-                    info.append(str(tar[5]))
-                    info.append(str(tar[3]))
+                if str(tar[5]) in {
+                    '200',
+                    '301',
+                    '302',
+                    '201',
+                    '404',
+                    '401',
+                    '405',
+                }:
+                    info = [str(tar[0]), str(tar[5]), str(tar[3])]
                     httpx_info.append(info)
 
                 sm_add_list.append(tar[0])
                 str_tar = ''
                 for t in tar:
-                    str_tar = str_tar + ' | ' + str(t)
+                    str_tar = f'{str_tar} | {str(t)}'
                 yt_fofa_add_list.append(str_tar)
                 yt_fofa_add_list2.append(tar)
     #对比subfinder
     for l in subfinder_list:
-        l1 = 'https://' + l
-        l2 = 'http://' + l
+        l1 = f'https://{l}'
+        l2 = f'http://{l}'
         if l1 not in sm_cache_file_list and l2 not in sm_cache_file_list:
             sm_add_list.append(l)
 
     for l in yt_fofa_add_list:
-        caches_file = open('./caches/fo_yt_cache.txt', 'a', encoding='utf-8')
-        caches_file.write(l + '\n')
-        caches_file.close()
-
+        with open('./caches/fo_yt_cache.txt', 'a', encoding='utf-8') as caches_file:
+            caches_file.write(l + '\n')
     return sm_add_list, yt_fofa_add_list2, sm_cache_file_list
 
 def run_subfinder(all_qc_domain_list):
@@ -456,18 +437,18 @@ def httpx_naabu_scan(filename, sm_cache_file_list):
         if len(naabu_list) < 2:
             return 1
 
-        port_scan = './inifile/naabu/naabu  -l ' + naabu_sm_file + ' -top-ports 1000 -o ' + filename_temp
+        port_scan = f'./inifile/naabu/naabu  -l {naabu_sm_file} -top-ports 1000 -o {filename_temp}'
         # print('2 ' + port_scan)
         os.system(port_scan)  # &> /dev/null
-        httpx_filename = filename_temp[0:-4] + '_httpx.txt'
+        httpx_filename = f'{filename_temp[:-4]}_httpx.txt'
         http_list = open(filename_temp, 'r')
         # print('123'+httpx_filename)
         with open(httpx_filename, 'w+') as f:
             for h in http_list:
                 # print(h)
-                f.writelines('https://' + h)
-                f.writelines('http://' + h)
-        http_scan = './inifile/httpx/httpx  -l ' + httpx_filename + ' -mc 200,401,403,404,302,301,500,405,501,502  -title   -status-code  -fr -o  ' + filename_filter_name  # &> /dev/null'
+                f.writelines(f'https://{h}')
+                f.writelines(f'http://{h}')
+        http_scan = f'./inifile/httpx/httpx  -l {httpx_filename} -mc 200,401,403,404,302,301,500,405,501,502  -title   -status-code  -fr -o  {filename_filter_name}'
         # print('1 ' + http_scan)
         os.system(http_scan)  # &> /dev/null
         # os.system('rm -rf ' + filename)
@@ -477,8 +458,7 @@ def httpx_naabu_scan(filename, sm_cache_file_list):
         for i in httpx_info_list:
             f = i.split(' ')
             if str(f[0]) not in caches_file_list and str(f[0]) != '':
-                info = []
-                info.append(str(f[0]))
+                info = [str(f[0])]
                 if '200' in f[1]:
                     info.append('200')
                 else:
@@ -503,19 +483,18 @@ def httpx_naabu_scan(filename, sm_cache_file_list):
         # print(sm_cache_file_list)
         for l in file_list:
             if 'http' not in l:
-                l1 = 'http://' + l
-                l2 = 'https://' + l
+                l1 = f'http://{l}'
+                l2 = f'https://{l}'
                 if l2 not in sm_cache_file_list:
                     caches_file.writelines(l2 + '\n')
                     caches_file_list_1.writelines(l2 + '\n')
                 if l1 not in sm_cache_file_list:
                     caches_file.writelines(l1 + '\n')
                     caches_file_list_1.writelines(l1 + '\n')
-            else:
-                if l not in sm_cache_file_list:
-                    print('0000000000000000000000')
-                    caches_file.writelines(l + '\n')
-                    caches_file_list_1.writelines(l + '\n')
+            elif l not in sm_cache_file_list:
+                print('0000000000000000000000')
+                caches_file.writelines(l + '\n')
+                caches_file_list_1.writelines(l + '\n')
         caches_file.close()
         # awvs
         scan_awvs(file_list)
@@ -524,30 +503,27 @@ def httpx_naabu_scan(filename, sm_cache_file_list):
     except Exception as e:
         traceback.print_exc()
         print(e)
-        os.system('touch ' + filename_filter_name)
+        os.system(f'touch {filename_filter_name}')
         print('12312312')
         if len(httpx_info) > 0:
-            file_list2 = []
-            for f in httpx_info:
-                file_list2.append(f[0])
+            file_list2 = [f[0] for f in httpx_info]
             print(file_list2)
             scan_awvs(file_list2)
             caches_file_list_1 = open(filename_filter_name, 'w', encoding='utf-8')
             for l in file_list2:
                 if 'http' not in l:
-                    l1 = 'http://' + l
-                    l2 = 'https://' + l
+                    l1 = f'http://{l}'
+                    l2 = f'https://{l}'
                     if l2 not in sm_cache_file_list:
                         caches_file.write(l2 + '\n')
                         caches_file_list_1.write(l2 + '\n')
                     if l1 not in sm_cache_file_list:
                         caches_file.write(l1 + '\n')
                         caches_file_list_1.write(l1 + '\n')
-                else:
-                    if l not in sm_cache_file_list:
-                        print('0000000000000000000000')
-                        caches_file.write(l + '\n')
-                        caches_file_list_1.write(l + '\n')
+                elif l not in sm_cache_file_list:
+                    print('0000000000000000000000')
+                    caches_file.write(l + '\n')
+                    caches_file_list_1.write(l + '\n')
 
         return filename_filter_name
 
@@ -555,7 +531,7 @@ def httpx_naabu_scan(filename, sm_cache_file_list):
 def update_cache_and_output_new_lines(file_a, file_b, output_file):
     # 读取文件A的内容到集合
     with open(file_a, 'r') as fa:
-        lines_a = set(line.strip() for line in fa)
+        lines_a = {line.strip() for line in fa}
 
     # 读取文件B并找出新行
     new_lines = []
